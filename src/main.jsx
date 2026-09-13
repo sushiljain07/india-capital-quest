@@ -37,23 +37,45 @@ const STATES = [
 ["West Bengal","Kolkata","Home to Kolkata and the Sundarbans, home of the Royal Bengal Tiger."]
 ];
 
+const UNION_TERRITORIES = [
+["Andaman and Nicobar Islands","Port Blair","A cluster of islands in the Bay of Bengal, famous for coral reefs and the Cellular Jail."],
+["Chandigarh","Chandigarh","A carefully planned city designed by Le Corbusier — and a UT in its own right."],
+["Dadra and Nagar Haveli and Daman and Diu","Daman","A coastal UT with Portuguese-era forts, churches and beaches."],
+["Delhi","New Delhi","India's national capital territory, home to the Red Fort and India Gate."],
+["Jammu and Kashmir","Srinagar","Known for the Dal Lake and houseboats in its summer capital, Srinagar."],
+["Ladakh","Leh","A high-altitude Himalayan UT famous for ancient monasteries and dramatic mountain passes."],
+["Lakshadweep","Kavaratti","India's smallest union territory, a group of coral islands in the Arabian Sea."],
+["Puducherry","Puducherry","A former French colony loved for its seaside promenade and colourful streets."]
+];
+
+const ALL_REGIONS = [...STATES, ...UNION_TERRITORIES];
+
+const SHARED_CAPITALS = new Set((()=>{
+  const counts = {};
+  ALL_REGIONS.forEach(([,capital])=>{ counts[capital]=(counts[capital]||0)+1; });
+  return Object.keys(counts).filter(c=>counts[c]>1);
+})());
+
 const AVATARS = ["🦁","🐯","🦊","🐼","🦄","🐵","🐸","🦋"];
 
 const PRAISE = ["Nice one!","Great job!","You got it!","Brilliant!","Fantastic!","Capital pro!"];
 const WRONG = ["Almost!","Good try!","So close!","Keep going!"];
 
-// Easy mode only draws from these well-known states, so a beginner isn't
+// Easy mode only draws from these well-known states/UTs, so a beginner isn't
 // quizzed on ones a class 3 student is unlikely to have heard of yet.
 const EASY_STATE_NAMES = new Set([
   "Maharashtra","Gujarat","Rajasthan","Punjab","Kerala","Tamil Nadu","Karnataka",
-  "West Bengal","Uttar Pradesh","Bihar","Madhya Pradesh","Goa","Haryana","Telangana"
+  "West Bengal","Uttar Pradesh","Bihar","Madhya Pradesh","Goa","Haryana","Telangana","Delhi"
 ]);
 
 function shuffle(a){ return [...a].sort(() => Math.random() - 0.5); }
 
-function buildQuestion(pair, index, {hard=false, pool=STATES}={}) {
+function buildQuestion(pair, index, {hard=false, pool=ALL_REGIONS}={}) {
   const [state, capital, fact] = pair;
-  const askState = Math.random() < 0.68;
+  // A handful of capitals are shared (e.g. Chandigarh is the capital of Haryana,
+  // Punjab and is itself a UT), so those can only be asked capital-first to avoid
+  // a question with more than one correct answer.
+  const askState = SHARED_CAPITALS.has(capital) || Math.random() < 0.68;
   const answer = askState ? capital : state;
   let candidates = pool.filter(x => x[0] !== state && x[1] !== capital);
   if (hard) {
@@ -76,15 +98,15 @@ function buildQuestion(pair, index, {hard=false, pool=STATES}={}) {
   }
   return {
     id: `${index}-${state}`,
-    prompt: askState ? `What is the capital of ${state}?` : `${capital} is the capital of which state?`,
+    prompt: askState ? `What is the capital of ${state}?` : `${capital} is the capital of which state or union territory?`,
     answer, askState, state, capital, fact,
     options: shuffle([answer, ...distractors])
   };
 }
 
 function makeQuiz(count=15, difficulty="medium") {
-  const easyPool = STATES.filter(s => EASY_STATE_NAMES.has(s[0]));
-  const pool = difficulty==="easy" ? easyPool : STATES;
+  const easyPool = ALL_REGIONS.filter(s => EASY_STATE_NAMES.has(s[0]));
+  const pool = difficulty==="easy" ? easyPool : ALL_REGIONS;
   const hard = difficulty==="hard";
   return shuffle(pool).slice(0,count).map((p,i)=>buildQuestion(p,i,{hard,pool}));
 }
@@ -317,7 +339,7 @@ function HomeScreen({difficulty,setDifficulty,mode,setMode,avatar,chooseAvatar,p
      </div>
      <h2>Choose your level</h2>
      <div className="levels">
-       {[["easy","Easy","10 questions","14 well-known states"],["medium","Medium","15 questions","All 28 states"],["hard","Challenge","20 questions","Tricky options, no hints"]].map(([id,name,num,desc])=>
+       {[["easy","Easy","10 questions","15 well-known states & UTs"],["medium","Medium","15 questions",`All ${ALL_REGIONS.length} states & UTs`],["hard","Challenge","20 questions","Tricky options, no hints"]].map(([id,name,num,desc])=>
          <button key={id} className={"level "+(difficulty===id?"active":"")} onClick={()=>setDifficulty(id)}>
            <span className="levelIcon">{id==="easy"?"🌱":id==="medium"?"🔥":"⚡"}</span>
            <span><b>{name}</b><small>{num} · {desc}</small></span>
@@ -330,7 +352,7 @@ function HomeScreen({difficulty,setDifficulty,mode,setMode,avatar,chooseAvatar,p
        <button className="navChip" onClick={()=>goTo("progress")}><Star size={16}/> My Progress</button>
        <button className="navChip" onClick={()=>goTo("leaderboard")}><ListOrdered size={16}/> Leaderboard</button>
      </div>
-     <div className="stats"><span><Trophy size={17}/> Best streak: <b>{bestStreak}</b></span><span><Map size={17}/> 28 states to master</span></div>
+     <div className="stats"><span><Trophy size={17}/> Best streak: <b>{bestStreak}</b></span><span><Map size={17}/> {ALL_REGIONS.length} states & UTs to master</span></div>
    </section>
  </main>
 }
@@ -440,14 +462,14 @@ function LeaderboardScreen({onBack,avatar}){
 
 function ProgressScreen({onBack,avatar}){
   const progress = loadProgress();
-  const masteredCount = STATES.filter(([state])=>isMastered(progress[state])).length;
+  const masteredCount = ALL_REGIONS.filter(([state])=>isMastered(progress[state])).length;
   return <main className="result">
     <Header onBack={onBack} avatar={avatar}/>
     <section className="panel listPanel">
       <h2><Star size={22}/> My Progress</h2>
-      <p className="progressSummary">{masteredCount} of {STATES.length} states mastered ⭐</p>
+      <p className="progressSummary">{masteredCount} of {ALL_REGIONS.length} states & UTs mastered ⭐</p>
       <div className="stateGrid">
-        {STATES.map(([state])=>{
+        {ALL_REGIONS.map(([state])=>{
           const rec = progress[state];
           const mastered = isMastered(rec);
           const tried = !!rec && rec.attempts>0;

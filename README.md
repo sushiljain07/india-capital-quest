@@ -34,7 +34,7 @@ npm run preview
 - Random state selection
 - Random capital/state question direction
 - Random answer order (with duplicate-answer protection when two states share a capital, e.g. Chandigarh)
-- 28 Indian states
+- All 28 Indian states and 8 union territories (36 in total)
 - Score, percentage and timer
 - Streak tracking
 - Hints
